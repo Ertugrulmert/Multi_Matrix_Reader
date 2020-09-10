@@ -104,7 +104,7 @@ def processFrame(frame):
 
 ##---------------------------------------------------------------------------------
         
-def boxDetection(contours,area_threshold,aspect_ratio_threshold,irregularity_threshold,adjacency_threshold,image_h, image_w):
+def boxDetection(already_detected, contours,area_threshold,aspect_ratio_threshold,irregularity_threshold,adjacency_threshold,image_h, image_w):
     rects = []
     boxes = []
     
@@ -136,7 +136,18 @@ def boxDetection(contours,area_threshold,aspect_ratio_threshold,irregularity_thr
                 addRect = True
                 
                 j=0
-                while j < len(rects):
+                
+                #discard previousl detected boxes
+                if len(already_detected):
+                    for old_box in already_detected:
+                        if Polygon(old_box[0]).intersects(boxPoly1):
+                            addRect = False
+                            break
+                else: print("NONE DETECTED YET")
+                        
+                        
+                        
+                while addRect and j < len(rects):
                     (x2,y2),(w2,h2),_ = rects[j]
     
                     boxPoly2 = Polygon(boxes[j])
@@ -185,13 +196,13 @@ def boxDetection(contours,area_threshold,aspect_ratio_threshold,irregularity_thr
 
 ##---------------------------------------------------------------------------------------------------------------
 
-def processMatrices(frame, matrix_thresholded, matrix_detect_frame, boxes):
+def processMatrices(frame, matrix_thresholded, matrix_detect_frame, boxes, detected):
     font = cv2.FONT_HERSHEY_SIMPLEX
     margin = 5
     
     for box in boxes:
         
-        result = []
+        decoded = False
         x,y,w,h = cv2.boundingRect(box)
         boxPoly = Polygon(box)
         boxArea = boxPoly.area
@@ -260,29 +271,32 @@ def processMatrices(frame, matrix_thresholded, matrix_detect_frame, boxes):
                 
                 temp_result = decode(  warped )
                 
-                if len(temp_result):           
-                    result = temp_result[0]            
+                if len(temp_result):       
+                    detected.append([box,box2,temp_result[0].data])
+                    decoded = True          
                     break
         
-        if not len(result):
+        if not decoded:
             cv2.drawContours(frame, [box], -1, (0,70,255), 3) 
             cv2.putText(frame,'Decoding Failed',(box[1][0],box[1][1]), font, 1, (0,70,255), 3, cv2.LINE_AA)
             if len(box2):
                 cv2.drawContours(frame, [box2], -1,(0,100,255),2)
         
-        else:
-            print("decoded: ", result.data)
+    for det in detected:
+        
+            print("decoded: ", det[2])
             #print("coor:  ",x2,y2,w2,h2)
-            print("bounding rect: ",x,y,w,h)
+            #print("bounding rect: ",x,y,w,h)
             
-            cv2.drawContours(frame, [box2], -1,(50,105,50),2)
+            #draw datamatrix outline
+            cv2.drawContours(frame, [det[1]], -1,(50,105,50),2)
             
-            cv2.putText(frame,'Decoding Succesful',(x-margin,y-margin*5), font, 1, (50,170,50), 3, cv2.LINE_AA)
-            cv2.putText(frame, str(result.data) ,(x-margin,y-margin), font, 1, (50,170,50), 3, cv2.LINE_AA)
+            cv2.putText(frame,'Decoding Succesful',( det[1][0][0]-margin,det[1][0][1]-margin*5), font, 1, (50,170,50), 3, cv2.LINE_AA)
+            cv2.putText(frame, str(det[2]) ,(det[1][0][0]-margin,det[1][0][1]), font, 1, (50,170,50), 3, cv2.LINE_AA)
             
-            cv2.drawContours(frame, [box], -1, (50,205,50), 2) 
+            cv2.drawContours(frame, [det[0]], -1, (50,205,50), 2) 
             
-    return frame
+    return frame, detected
         
 
 ##---------------------------------------------------------------------------------
@@ -291,9 +305,9 @@ def processMatrices(frame, matrix_thresholded, matrix_detect_frame, boxes):
 cap = cv2.VideoCapture(0,cv2.CAP_DSHOW)
 
 #cap.set(cv2.CAP_PROP_SETTINGS,0.0)
-cap.set(4, 3840)
+cap.set(4, 1920)
 
-cap.set(3, 2160)
+cap.set(3, 1080)
 cap.set(27, 133)
 cap.set(22, 100)
 cap.set(20, 30)
@@ -301,11 +315,11 @@ cap.set(33, 79)
 cap.set(34, 0)
 
 
-out = cv2.VideoWriter('outputx.avi',cv2.VideoWriter_fourcc(*'MJPG'), 5, (int(cap.get(3)),int(cap.get(4))))
+out = cv2.VideoWriter('result_1920x1080.avi',cv2.VideoWriter_fourcc(*'MJPG'), 5, (int(cap.get(3)),int(cap.get(4))))
 
 #-------------------------------------------
 
-
+already_detected = []
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -319,7 +333,6 @@ while True:
     print("frame")
     t1 = time.time()
     
-    detected = []
 
     image_h, image_w, _ =frame.shape
     
@@ -327,12 +340,12 @@ while True:
     t2 = time.time()
 
     print("processFrame : ", time.time()-t1)
-    boxes = boxDetection( box_contours, area_threshold, aspect_ratio_threshold, \
+    boxes = boxDetection( already_detected, box_contours,  area_threshold, aspect_ratio_threshold, \
                              irregularity_threshold, adjacency_threshold, image_h, image_w  )
              
     print("boxDetection : ", time.time()-t2)
     t2 = time.time()
-    newFrame = processMatrices( frame, matrix_thresholded,matrix_detect_frame, boxes )
+    newFrame, already_detected = processMatrices( frame, matrix_thresholded,matrix_detect_frame, boxes, already_detected )
     print("processMatrices : ", time.time()-t2)
     
     t2 = time.time()
