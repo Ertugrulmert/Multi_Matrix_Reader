@@ -219,7 +219,7 @@ def processContours(contours,area_threshold,aspect_ratio_threshold,irregularity_
 def decodeDataMatrices(frame,filtered_frame,boxes):
     font = cv2.FONT_HERSHEY_SIMPLEX
     margin = 5
-    
+    matrix_margin=0.05
     
     for box in boxes:
         if len(box[1])>1:
@@ -233,19 +233,51 @@ def decodeDataMatrices(frame,filtered_frame,boxes):
             cv2.putText(frame,'No Barcode Found',(box[0][1][0],box[0][1][1]), font, 1, (255,99,71), 3, cv2.LINE_AA)
         else:
             #print(box[1])
-            for matrixBox in box[1]:
-                x,y,w,h = cv2.boundingRect(matrixBox)
+            for mat_box in box[1]:
+                
+                box_rect = cv2.minAreaRect(mat_box)
+                
+                #-------------------------------------
+                w2 = int(box_rect[1][0]*(1+matrix_margin)) 
+                h2 = int(box_rect[1][1]*(1+matrix_margin))
+            
+                mat_box = ((box_rect[0][0],box_rect[0][1]),( w2, h2 ),box_rect[2])
+            
+                box2 = np.int0( cv2.boxPoints(box_rect) )
+            
     
-                result = decode(  filtered_frame[ y-margin : y+h+margin,x-margin : x+w+margin ] )
+                straight_box = np.array([[0, h2-1], [0, 0],[w2-1, 0], [w2-1, h2-1]], dtype="float32")
+        
+                #perspective transformation matrix
+                transform = cv2.getPerspectiveTransform( box2.astype("float32"), straight_box)
+        
+                # warp the rotated rectangle 
+                warped = cv2.warpPerspective(filtered_frame, transform, (w2, h2))
+                
+                result = decode(  warped )
+                
+                
+                
+                
+                #--------------------------------------
+                
+                #x,y,w,h = cv2.boundingRect(matrixBox)
+    
+                #result = decode(  filtered_frame[ y-margin : y+h+margin,x-margin : x+w+margin ] )
+                
+                
+                
+                
+                
                 #CHECK IF MATRIX WAS DECODED
                 if len(result):
                     print("decoded: ", result[0].data)
                     readible = True
-                    cv2.rectangle(frame,(x,y),(x+w,y+h),(50,205,50),4)
-                    cv2.putText(frame,'Decoding Succesfull',(x-margin,y-margin), font, 1, (50,170,50), 2, cv2.LINE_AA)
-                    cv2.putText(frame, str(result[0].data) ,(x-margin,y-margin*7), font, 1, (50,170,50), 2, cv2.LINE_AA)
+                    cv2.drawContours(frame, [box2], -1,(50,205,50),4)
+                    cv2.putText(frame,'Decoding Succesfull',(box2[0][0],ybox2[0]-margin), font, 1, (50,170,50), 2, cv2.LINE_AA)
+                    cv2.putText(frame, str(result[0].data) ,(box2[0][0],ybox2[0]-margin*7), font, 1, (50,170,50), 2, cv2.LINE_AA)
                 else:
-                    cv2.rectangle(frame,(x,y),(x+w,y+h),(255,215,0),4)
+                    cv2.drawContours(frame, [box2],-1,(255,215,0),4)
                     
             
             if not readible: 
@@ -263,10 +295,14 @@ def decodeDataMatrices(frame,filtered_frame,boxes):
 #cap = cv2.VideoCapture(0)
 #-------------------------------------------
 
-url = 'http://192.168.0.19:8080/video'
+cap = cv2.VideoCapture(1)
 
-cap = cv2.VideoCapture(url)
-#-------------------------------------------
+#cap.set(cv2.CAP_PROP_SETTINGS,0.0)
+cap.set(4, 4208)
+
+cap.set(3, 3120)
+cap.set(22, 120)
+cap.set(20, 100)
 
 
 while(True):

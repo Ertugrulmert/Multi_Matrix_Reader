@@ -21,14 +21,17 @@ import shapely
 from shapely.geometry import Polygon,box
 from pylibdmtx.pylibdmtx import decode
 
-area_threshold = 50*50
+#BOX DETECTION PARAMETERS
+area_threshold = 30*30
 aspect_ratio_threshold = 7
-adjacency_threshold = 0.5
+adjacency_threshold = 0.05
 
-min_matrix_size = 10*10
-irregularity_threshold = 0.1
-aspect_margin = 0.1
-boxMargin = 0.5
+#DATAMATRIX DETECTION PARAMETERS
+min_matrix_size = 0.01
+irregularity_threshold = 0.2
+aspect_margin = 0.3
+boxMargin = 0.8
+matrix_margin = 0.2
 
 #-------------------------------------------------------------------------------------------------------------------------
 
@@ -41,9 +44,9 @@ def removeDuplicates(boxes):
 
         j = i+1
         while j < len(boxes):
-            
+    
             points2 = cv2.boxPoints(boxes[j])
-            points2 = np.int0(box2) 
+            points2 = np.int0(points2) 
             poly2 = Polygon( points2 )
             if poly1.equals(poly2) or poly1.almost_equals(poly2, decimal=-1):
                 del boxes[j]
@@ -52,41 +55,6 @@ def removeDuplicates(boxes):
         i +=1
     return boxes
 
-##-------------------------------------------------------------------------------------------------------------------------
-
-def findMatrices(boxImage):
-    matrix_rotated = []
-    matrix_contours, _= cv2.findContours(boxImage, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    
-    for contour in  matrix_contours:
-        contour = cv2.convexHull(contour) 
-        contArea = cv2.contourArea(contour)
-    
-        #AREA THRESHOLD
-        if  boxMargin*boxImage.size >contArea > min_matrix_size :
-        
-            #IRREGULARITY (NON-RECTANGULARITY) MEASUREMENT
-            irregularity = 0
-            aspect_ratio = 0
-    
-            rect = cv2.minAreaRect(contour)
-            (x1,y1),(w1,h1),_ = rect
-        
-            rectArea = w1*h1
-
-            irregularity = abs(rectArea-contArea)/rectArea
-        
-            #ASPECT RATIO MEASUREMENT
-            aspect_ratio = w1/h1
-        
-            if irregularity < irregularity_threshold and 1-aspect_margin < aspect_ratio < 1+aspect_margin :
-                matrix_rotated.append(rect)
-    
-    matrix_rotated = removeDuplicates(matrix_rotated)   
-    print(len(matrix_rotated))
-
-    return matrix_rotated
 
 
 ##------------------------------------------------------------------------------------------------------------------------
@@ -97,7 +65,7 @@ def processFrame(frame):
     
     image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    #median blur helps to eliminate salt&pepper noise - if it lowers DataMatrix decoding accuracy, it can be changed or eliminated.
+    #blur helps to eliminate noise - if it lowers DataMatrix decoding accuracy, it can be changed or eliminated.
     blur = cv2.GaussianBlur(image,(5,5),0)
     
             #THRESHOLDING
@@ -120,10 +88,10 @@ def processFrame(frame):
  
             #MORPHOLOGICAL OPERATIONS
             
-    kernel1 = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+    kernel1 = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
     closed1 = cv2.morphologyEx(edged1, cv2.MORPH_CLOSE, kernel1)
 
-    kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 4))
+    kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
     matrix_detect_frame = cv2.morphologyEx(matrix_thresholded, cv2.MORPH_OPEN, kernel2)
     
             # ADDING CONTOURS
@@ -214,94 +182,105 @@ def boxDetection(contours,area_threshold,aspect_ratio_threshold,irregularity_thr
     return boxes
 
 
-##--------------------------------------------------------------------------------------------------------------
-def findMatrices(boxImage):
-    matrix_rotated = []
-    matrix_contours, _= cv2.findContours(boxImage, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    
-    for contour in  matrix_contours:
-        contour = cv2.convexHull(contour) 
-        contArea = cv2.contourArea(contour)
-    
-        #AREA THRESHOLD
-        if  boxMargin*boxImage.size >contArea > min_matrix_size :
-        
-            #IRREGULARITY (NON-RECTANGULARITY) MEASUREMENT
-            irregularity = 0
-            aspect_ratio = 0
-    
-            rect = cv2.minAreaRect(contour)
-            (x1,y1),(w1,h1),_ = rect
-        
-            rectArea = w1*h1
-
-            irregularity = abs(rectArea-contArea)/rectArea
-        
-            #ASPECT RATIO MEASUREMENT
-            aspect_ratio = w1/h1
-        
-            if irregularity < irregularity_threshold and 1-aspect_margin < aspect_ratio < 1+aspect_margin :
-                matrix_rotated.append(rect)
-    
-    matrix_rotated = removeDuplicates(matrix_rotated)   
-    print(len(matrix_rotated))
-
-    return matrix_rotated
 
 ##---------------------------------------------------------------------------------------------------------------
 
 def processMatrices(frame, matrix_thresholded, matrix_detect_frame, boxes):
     font = cv2.FONT_HERSHEY_SIMPLEX
-    margin = 20
+    margin = 5
     
     for box in boxes:
+        
         result = []
         x,y,w,h = cv2.boundingRect(box)
-        decoded_box = []
+        boxPoly = Polygon(box)
+        boxArea = boxPoly.area
+        box2 = []
         
-        matrix_boxes=findMatrices( matrix_detect_frame[y:y+h,x:x+w])
+        #-------------Matrix Candidate Detection--------------------------
         
-        #we use the adaptive thresholded image for increased decoding accuracy
-        for mat_box in matrix_boxes:     
+        matrix_rotated = []
+        matrix_contours, _= cv2.findContours(matrix_detect_frame[y:y+h,x:x+w], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     
-            w2 = int(mat_box[1][0]) + margin
-            h2 = int(mat_box[1][1]) + margin
+        
+        for contour in  matrix_contours:
+            contour = cv2.convexHull(contour) 
+            contArea = cv2.contourArea(contour)
+        
+            #AREA THRESHOLD
+            if  boxMargin*boxArea >contArea > min_matrix_size*boxArea :
+            
+                #IRREGULARITY (NON-RECTANGULARITY) MEASUREMENT
+                irregularity = 0
+                aspect_ratio = 0
+        
+                rect = cv2.minAreaRect(contour)
+                (x1,y1),(w1,h1),_ = rect
+            
+                rectArea = w1*h1
+    
+                irregularity = abs(rectArea-contArea)/rectArea
+            
+                #ASPECT RATIO MEASUREMENT
+                aspect_ratio = w1/h1
+            
+                if irregularity<irregularity_threshold and 1-aspect_margin < aspect_ratio < 1+aspect_margin :
+                    matrix_rotated.append(rect)
+        
+        matrix_rotated = removeDuplicates(matrix_rotated)   
+        #print(len(matrix_rotated))
+
+        
+        
+        
+        #-----------------------Attempting to Decode Matrices------------------------------
+        
+       
+        for mat_box in matrix_rotated:  
+            
+    
+            w2 = int(mat_box[1][0]*(1+matrix_margin)) 
+            h2 = int(mat_box[1][1]*(1+matrix_margin))
             
             mat_box = ((mat_box[0][0]+x,mat_box[0][1]+y),( w2, h2 ),mat_box[2])
             
             box2 = np.int0( cv2.boxPoints(mat_box) )
-            cv2.drawContours(frame, [box2], -1, (50,205,50), 5) 
-    
-            straight_box = np.array([[0, h2-1], [0, 0],[w2-1, 0], [w2-1, h2-1]], dtype="float32")
-    
-            #perspective transformation matrix
-            transform = cv2.getPerspectiveTransform( box2.astype("float32"), straight_box)
-    
-            # warp the rotated rectangle 
-            warped = cv2.warpPerspective(matrix_thresholded, transform, (w2, h2))
             
-            temp_result = decode(  warped )
-            
-            if len(temp_result):           
-                result = temp_result[0]            
-                break
+            # one last check for faulty detection of box itself as a matrix
+            if not boxPoly.contains(Polygon(box2)): box2 = []
+            else:
+    
+                straight_box = np.array([[0, h2-1], [0, 0],[w2-1, 0], [w2-1, h2-1]], dtype="float32")
+        
+                #perspective transformation matrix
+                transform = cv2.getPerspectiveTransform( box2.astype("float32"), straight_box)
+        
+                # warp the rotated rectangle 
+                warped = cv2.warpPerspective(matrix_thresholded, transform, (w2, h2))
+                
+                temp_result = decode(  warped )
+                
+                if len(temp_result):           
+                    result = temp_result[0]            
+                    break
         
         if not len(result):
-            cv2.drawContours(frame, [box], -1, (255,70,0), 5) 
-            cv2.putText(frame,'Decoding Failed',(box[1][0],box[1][1]), font, 1, (255,70,0), 3, cv2.LINE_AA)
+            cv2.drawContours(frame, [box], -1, (0,70,255), 3) 
+            cv2.putText(frame,'Decoding Failed',(box[1][0],box[1][1]), font, 1, (0,70,255), 3, cv2.LINE_AA)
+            if len(box2):
+                cv2.drawContours(frame, [box2], -1,(0,100,255),2)
         
         else:
             print("decoded: ", result.data)
             #print("coor:  ",x2,y2,w2,h2)
             print("bounding rect: ",x,y,w,h)
             
-            cv2.drawContours(frame, [box2], -1,(50,105,50),4)
+            cv2.drawContours(frame, [box2], -1,(50,105,50),2)
             
-            cv2.putText(frame,'Decoding Succesful',(x-margin,y-margin*5), font, 1, (50,170,50), 2, cv2.LINE_AA)
-            cv2.putText(frame, str(result.data) ,(x-margin,y-margin), font, 1, (50,170,50), 2, cv2.LINE_AA)
+            cv2.putText(frame,'Decoding Succesful',(x-margin,y-margin*5), font, 1, (50,170,50), 3, cv2.LINE_AA)
+            cv2.putText(frame, str(result.data) ,(x-margin,y-margin), font, 1, (50,170,50), 3, cv2.LINE_AA)
             
-            cv2.drawContours(frame, [box], -1, (50,205,50), 5) 
+            cv2.drawContours(frame, [box], -1, (50,205,50), 2) 
             
     return frame
         
@@ -309,44 +288,65 @@ def processMatrices(frame, matrix_thresholded, matrix_detect_frame, boxes):
 ##---------------------------------------------------------------------------------
 
 #CAMERA LOOP
-#cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0,cv2.CAP_DSHOW)
+
+#cap.set(cv2.CAP_PROP_SETTINGS,0.0)
+cap.set(4, 3840)
+
+cap.set(3, 2160)
+cap.set(27, 133)
+cap.set(22, 100)
+cap.set(20, 30)
+cap.set(33, 79)
+cap.set(34, 0)
+
+
+out = cv2.VideoWriter('outputx.avi',cv2.VideoWriter_fourcc(*'MJPG'), 5, (int(cap.get(3)),int(cap.get(4))))
+
 #-------------------------------------------
 
-url = 'http://192.168.0.19:8080/video'
 
-cap = cv2.VideoCapture(url)
-#-------------------------------------------
-
-
-while(True):
+while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
+   
     if not ret:
-        continue
+        continue  
     
     
-    if frame is not None:
-        print("frame")
-        t1 = time.time()
     
-        image_h, image_w, _ =frame.shape
-        
-        matrix_thresholded, matrix_detect_frame, box_contours = processFrame(frame)
-        
-        boxes = boxDetection( box_contours, area_threshold, aspect_ratio_threshold, \
-                                 irregularity_threshold, adjacency_threshold, image_h, image_w  )
-                 
-        
-        newFrame = processMatrices( frame, matrix_thresholded, boxes )
-        
-        t2 = time.time()
-        print("time diff : ", t2-t1)
-        # Display the resulting frame
-        
-        imS = cv2.resize(newFrame, (1440, 960)) 
-        
-        
-        cv2.imshow('frame',imS)
+    print(frame.shape)
+    print("frame")
+    t1 = time.time()
+    
+    detected = []
+
+    image_h, image_w, _ =frame.shape
+    
+    matrix_thresholded, matrix_detect_frame, box_contours = processFrame(frame)
+    t2 = time.time()
+
+    print("processFrame : ", time.time()-t1)
+    boxes = boxDetection( box_contours, area_threshold, aspect_ratio_threshold, \
+                             irregularity_threshold, adjacency_threshold, image_h, image_w  )
+             
+    print("boxDetection : ", time.time()-t2)
+    t2 = time.time()
+    newFrame = processMatrices( frame, matrix_thresholded,matrix_detect_frame, boxes )
+    print("processMatrices : ", time.time()-t2)
+    
+    t2 = time.time()
+    print("time diff : ", t2-t1)
+    # Display the resulting frame
+    
+
+    out.write(newFrame)
+    
+    cv2.namedWindow("window", cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty("window",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
+    cv2.imshow("window", newFrame)
+
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
@@ -355,3 +355,5 @@ while(True):
 
 cap.release()
 cv2.destroyAllWindows()
+out.release()
+
