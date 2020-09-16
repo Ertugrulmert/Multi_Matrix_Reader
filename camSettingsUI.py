@@ -13,10 +13,15 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_camSettingsDialog(object):
     def setupUi(self, camSettingsDialog):
+        
         camSettingsDialog.setObjectName("camSettingsDialog")
         camSettingsDialog.resize(1488, 708)
+        
+        #DIALOG LAYOUT
         self.horizontalLayout = QtWidgets.QHBoxLayout(camSettingsDialog)
         self.horizontalLayout.setObjectName("horizontalLayout")
+        
+        #LEFT SIDE FRAME
         self.settingsFrame1 = QtWidgets.QFrame(camSettingsDialog)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
@@ -26,8 +31,12 @@ class Ui_camSettingsDialog(object):
         self.settingsFrame1.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.settingsFrame1.setFrameShadow(QtWidgets.QFrame.Raised)
         self.settingsFrame1.setObjectName("settingsFrame1")
+        
+        #LEFT SIDE LAYOUT
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.settingsFrame1)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
+        
+        #BRIGHTNESS LABEL
         self.brightnessLabel = QtWidgets.QLabel(self.settingsFrame1)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -38,6 +47,8 @@ class Ui_camSettingsDialog(object):
         self.brightnessLabel.setAlignment(QtCore.Qt.AlignBottom|QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft)
         self.brightnessLabel.setObjectName("brightnessLabel")
         self.verticalLayout_2.addWidget(self.brightnessLabel)
+        
+        #BRIGHTNESS SLIDER
         self.brightnessSlider = QtWidgets.QSlider(self.settingsFrame1)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -47,6 +58,8 @@ class Ui_camSettingsDialog(object):
         self.brightnessSlider.setOrientation(QtCore.Qt.Horizontal)
         self.brightnessSlider.setObjectName("brightnessSlider")
         self.verticalLayout_2.addWidget(self.brightnessSlider)
+        
+        #GAMMA LABEL
         self.gammaLabel = QtWidgets.QLabel(self.settingsFrame1)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -61,10 +74,14 @@ class Ui_camSettingsDialog(object):
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.gammaSlider.sizePolicy().hasHeightForWidth())
+        
+        #GAMMA SLIDER
         self.gammaSlider.setSizePolicy(sizePolicy)
         self.gammaSlider.setOrientation(QtCore.Qt.Horizontal)
         self.gammaSlider.setObjectName("gammaSlider")
         self.verticalLayout_2.addWidget(self.gammaSlider)
+        
+        #SHARPNESS LABEL
         self.sharpnessLabel = QtWidgets.QLabel(self.settingsFrame1)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -73,10 +90,14 @@ class Ui_camSettingsDialog(object):
         self.sharpnessLabel.setSizePolicy(sizePolicy)
         self.sharpnessLabel.setObjectName("sharpnessLabel")
         self.verticalLayout_2.addWidget(self.sharpnessLabel)
+        
+        #SHARPNESS SLIDER
         self.sharpnessSlider = QtWidgets.QSlider(self.settingsFrame1)
         self.sharpnessSlider.setOrientation(QtCore.Qt.Horizontal)
         self.sharpnessSlider.setObjectName("sharpnessSlider")
         self.verticalLayout_2.addWidget(self.sharpnessSlider)
+        
+        #PAN LABEL
         self.panLabel = QtWidgets.QLabel(self.settingsFrame1)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -85,10 +106,14 @@ class Ui_camSettingsDialog(object):
         self.panLabel.setSizePolicy(sizePolicy)
         self.panLabel.setObjectName("panLabel")
         self.verticalLayout_2.addWidget(self.panLabel)
+        
+        #PAN SLIDER
         self.panSlider = QtWidgets.QSlider(self.settingsFrame1)
         self.panSlider.setOrientation(QtCore.Qt.Horizontal)
         self.panSlider.setObjectName("panSlider")
         self.verticalLayout_2.addWidget(self.panSlider)
+        
+        #TILT LABEL
         self.tiltLabel = QtWidgets.QLabel(self.settingsFrame1)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -97,11 +122,17 @@ class Ui_camSettingsDialog(object):
         self.tiltLabel.setSizePolicy(sizePolicy)
         self.tiltLabel.setObjectName("tiltLabel")
         self.verticalLayout_2.addWidget(self.tiltLabel)
+        
+        #TILT SLIDER
         self.tiltSlider = QtWidgets.QSlider(self.settingsFrame1)
         self.tiltSlider.setOrientation(QtCore.Qt.Horizontal)
         self.tiltSlider.setObjectName("tiltSlider")
         self.verticalLayout_2.addWidget(self.tiltSlider)
+        
+        #ADD LEFT FRAME
         self.horizontalLayout.addWidget(self.settingsFrame1)
+        
+        #RIGHT SIDE FRAME
         self.settingsFrame2 = QtWidgets.QFrame(camSettingsDialog)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
@@ -111,8 +142,12 @@ class Ui_camSettingsDialog(object):
         self.settingsFrame2.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.settingsFrame2.setFrameShadow(QtWidgets.QFrame.Raised)
         self.settingsFrame2.setObjectName("settingsFrame2")
+        
+        #RIGHT SIDE LAYOUT
         self.verticalLayout = QtWidgets.QVBoxLayout(self.settingsFrame2)
         self.verticalLayout.setObjectName("verticalLayout")
+        
+        #RESOLUTION LABEL
         self.resolutionLabel = QtWidgets.QLabel(self.settingsFrame2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -121,6 +156,8 @@ class Ui_camSettingsDialog(object):
         self.resolutionLabel.setSizePolicy(sizePolicy)
         self.resolutionLabel.setObjectName("resolutionLabel")
         self.verticalLayout.addWidget(self.resolutionLabel)
+        
+        #RESOLUTION SELECTION BOX
         self.resolutionBox = QtWidgets.QComboBox(self.settingsFrame2)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -129,9 +166,13 @@ class Ui_camSettingsDialog(object):
         self.resolutionBox.setSizePolicy(sizePolicy)
         self.resolutionBox.setObjectName("resolutionBox")
         self.verticalLayout.addWidget(self.resolutionBox)
+        
+        #RESET TO DEFAULT BUTTON 
         self.defaultResetButton = QtWidgets.QPushButton(self.settingsFrame2)
         self.defaultResetButton.setObjectName("defaultResetButton")
         self.verticalLayout.addWidget(self.defaultResetButton)
+        
+        #OKAY BUTTON
         self.okButton = QtWidgets.QPushButton(self.settingsFrame2)
         self.okButton.setObjectName("okButton")
         self.verticalLayout.addWidget(self.okButton)

@@ -6,7 +6,7 @@ class Camera:
         self.cap = None
     
     def initialize(self):
-        self.cap = cv2.VideoCapture(self.cam_num)
+        self.cap = cv2.VideoCapture(self.cam_num,cv2.CAP_DSHOW)
         return self.cap.isOpened()
 
     def get_frame(self):
@@ -75,6 +75,9 @@ class Camera:
         self.cap.set(cv2.CAP_PROP_SHARPNESS,sharpness)
     def get_sharpness(self):
         return self.cap.get(cv2.CAP_PROP_SHARPNESS)  
+    
+    def reset_properties(self):
+        self.cap.set(cv2.CAP_PROP_SETTINGS, 0)
     
     
     
