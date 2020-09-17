@@ -57,6 +57,9 @@ class Ui_camSettingsDialog(object):
         self.brightnessSlider.setSizePolicy(sizePolicy)
         self.brightnessSlider.setOrientation(QtCore.Qt.Horizontal)
         self.brightnessSlider.setObjectName("brightnessSlider")
+        self.brightnessSlider.setMinimum(-64)
+        self.brightnessSlider.setMaximum(64)
+        
         self.verticalLayout_2.addWidget(self.brightnessSlider)
         
         #GAMMA LABEL
@@ -79,6 +82,11 @@ class Ui_camSettingsDialog(object):
         self.gammaSlider.setSizePolicy(sizePolicy)
         self.gammaSlider.setOrientation(QtCore.Qt.Horizontal)
         self.gammaSlider.setObjectName("gammaSlider")
+        self.brightnessSlider.setMinimum(40)
+        self.brightnessSlider.setMaximum(500)
+        self.brightnessSlider.setTickInterval(1)
+        self.brightnessSlider.setTickPosition(3)
+        
         self.verticalLayout_2.addWidget(self.gammaSlider)
         
         #SHARPNESS LABEL
@@ -96,6 +104,8 @@ class Ui_camSettingsDialog(object):
         self.sharpnessSlider.setOrientation(QtCore.Qt.Horizontal)
         self.sharpnessSlider.setObjectName("sharpnessSlider")
         self.verticalLayout_2.addWidget(self.sharpnessSlider)
+        self.sharpnessSlider.setMinimum(0)
+        self.sharpnessSlider.setMaximum(128)
         
         #PAN LABEL
         self.panLabel = QtWidgets.QLabel(self.settingsFrame1)
