@@ -1,4 +1,4 @@
-import sys,cv2, threading
+import sys,cv2, threading, time
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui     import *
 from PyQt5.QtCore    import *
@@ -11,12 +11,12 @@ from Modules import Camera
 from frameProcessor import frameProcessor
 
 
-class SettingsDialog(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.ui = Ui_camSettingsDialog()
-        self.ui.setupUi(self)
-        self.ui.okButton.clicked.connect(self.close)
+# class SettingsDialog(QDialog):
+#     def __init__(self):
+#         super().__init__()
+#         self.ui = Ui_camSettingsDialog()
+#         self.ui.setupUi(self)
+#         self.ui.okButton.clicked.connect(self.close)
         
 
 
@@ -30,12 +30,13 @@ class MainWindow(QMainWindow):
         
         self.processing = False
         self.resetProcess = False
-        self.threadpool = QThreadPool()
-        
+        self.thread = None
+
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         
         self.ui.camSelectMenu.aboutToShow.connect(self.prepCamera)
+        self.ui.camResolutionMenu.aboutToShow.connect(self.showResolutions)
         
         #self.ui.actionSelect_Camera.triggered.connect(self.prepCamera)
         self.ui.actionCamera_Settings.triggered.connect(self.settingsBox)
@@ -44,11 +45,13 @@ class MainWindow(QMainWindow):
         self.ui.resetDetectButton.clicked.connect(self.resetProcessor)
     
     @QtCore.pyqtSlot()
-    def closeEvent(self,event):
+    def closeEvent(self,event):  
         if self.camera is not None: 
             self.camera.close()
             self.camera = None
             self.processing = None
+            if self.thread is not None and self.thread.is_alive():
+                self.thread.join()
         event.accept() 
         
     @QtCore.pyqtSlot()
@@ -76,14 +79,26 @@ class MainWindow(QMainWindow):
         
         
     def getNewFrame(self):
-        while self.camera is not None and self.camera.isReady():
+        
+        while self.camera is not None:
+            
+            if not self.camera.isReady():
+                continue
+            
+            print (threading.active_count())
+            #print (threading.currentThread().getName())
             ret ,frame= self.camera.captureFrame()
             if not ret:
                 continue
-            if self.resetProcess: self.processor.reset()
+            if self.resetProcess: 
+                self.processor.reset()
+                self.resetProcess = False
                 
             if self.processing: self.processFrame(frame)
-            else: self.drawFrame(frame)
+            else: 
+                if  frame.shape[1] > 1920 :
+                    frame = frameProcessor.downSize(frame)
+                self.drawFrame(frame)
 
             # captureThread = CaptureThread(self.camera)
             
@@ -93,60 +108,45 @@ class MainWindow(QMainWindow):
             # self.threadpool.start(captureThread)
             # print("thread started")
             
+        
+            
     @QtCore.pyqtSlot()            
     def drawFrame(self,frame):
-
+        
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], QtGui.QImage.Format_RGB888)
         pix = QtGui.QPixmap.fromImage(img)
-        self.ui.streamLabel.setPixmap(pix)  
+        self.ui.streamLabel.setPixmap(pix) 
+        #time.sleep(0.05)
         self.getNewFrame()
+    
         
         
         
     @QtCore.pyqtSlot()
     def settingsBox(self):
-        self.SettingsDialog = SettingsDialog()
-        self.setSettingsParams()
-        
-        self.SettingsDialog.show()
-        
-        self.SettingsDialog.ui.defaultResetButton.clicked.connect(self.camera.reset_properties)
-        
-        self.SettingsDialog.ui.brightnessSlider.sliderReleased.connect(self.updateBrightness)
-        self.SettingsDialog.ui.gammaSlider.valueChanged.connect(self.updateGamma)
-        self.SettingsDialog.ui.sharpnessSlider.valueChanged.connect(self.updateSharpness)
-        self.SettingsDialog.ui.panSlider.valueChanged.connect(self.updatePan)
-        self.SettingsDialog.ui.tiltSlider.valueChanged.connect(self.updateTilt)
-    @QtCore.pyqtSlot()        
-    def updateBrightness(self):
-        self.camera.set_brightness(int(self.SettingsDialog.ui.brightnessSlider.tickPosition()))
-        self.SettingsDialog.ui.brightnessSlider.setValue(int(self.camera.get_brightness()))
+        if self.camera is not None and self.camera.isReady():
+            self.camera.open_settings_dialog()
+            
+    def showResolutions(self):
+        if self.camera is not None and self.camera.isReady():
+            cameraResList = self.camera.get_available_resolutions()
+            self.ui.camResolutionMenu.clear()
+            
+            for i in range(len(cameraResList)):
+                resAction = self.ui.camResolutionMenu.addAction("Resolution %d" % i)
+                resAction.setText(cameraResList[i])
+                resAction.setCheckable(True)
+                resAction.triggered.connect( lambda chk, i=i: self.setResolution(i) )
+                
+            self.update()
+    
     @QtCore.pyqtSlot()
-    def updateGamma(self):
-        self.camera.set_gamma(int(self.SettingsDialog.ui.gammaSlider.tickPosition()))
-        self.SettingsDialog.ui.gammaSlider.setValue(int(self.camera.get_gamma()))
-    @QtCore.pyqtSlot()
-    def updateSharpness(self):
-        self.camera.set_sharpness(int(self.SettingsDialog.ui.sharpnessSlider.tickPosition()))
-    @QtCore.pyqtSlot()
-    def updatePan(self):
-        self.camera.set_pan(int(self.SettingsDialog.ui.panSlider.tickPosition()))
-        self.SettingsDialog.ui.panSlider.setValue(int(self.camera.get_pan()))
-    @QtCore.pyqtSlot()
-    def updateTilt(self):
-        self.camera.set_tilt(int(self.SettingsDialog.ui.tiltSlider.tickPosition()))
-        self.SettingsDialog.ui.tiltSlider.setValue(int(self.camera.get_tilt()))
-        self.SettingsDialog.ui.sharpnessSlider.setValue(int(self.camera.get_sharpness()))
-        
-    def setSettingsParams(self):
-        self.SettingsDialog.ui.brightnessSlider.setValue(int(self.camera.get_brightness()))
-        self.SettingsDialog.ui.gammaSlider.setValue(int(self.camera.get_gamma()))
-        self.SettingsDialog.ui.panSlider.setValue(int(self.camera.get_pan()))
-        self.SettingsDialog.ui.tiltSlider.setValue(int(self.camera.get_tilt()))
-        self.SettingsDialog.ui.sharpnessSlider.setValue(int(self.camera.get_sharpness()))
-        self.SettingsDialog.ui.resolutionBox.clear()
-        self.SettingsDialog.ui.resolutionBox.addItems(self.camera.get_available_resolutions())
+    def setResolution(self,i):
+        self.camera.pause_cam()
+        self.camera.set_resolution(i)
+        self.camera.resume_cam()
+            
         
     @QtCore.pyqtSlot()
     def prepCamera(self):
@@ -166,6 +166,11 @@ class MainWindow(QMainWindow):
     @QtCore.pyqtSlot()
     def setCamera(self,cameraInfo,i):
         
+        if self.camera is not None: 
+            self.camera.close()
+            self.camera = None
+            if self.thread is not None and self.thread.is_alive() : self.thread.join()
+        
         #QCamera only used to retrieve available camera resolutions
         tempCam = QtMultimedia.QCamera(cameraInfo)
         tempCam.load()
@@ -174,10 +179,16 @@ class MainWindow(QMainWindow):
         self.camera.set_available_resolutions(tempCam.supportedViewfinderResolutions())
         tempCam.unload()
         
+
+        
         if self.camera.initialize():
-            th = threading.Thread(target=self.getNewFrame)
-            th.start()
+            self.thread = threading.Thread(target=self.getNewFrame)
+            self.thread.start()
+            self.ui.camResolutionMenu.setEnabled(True)
             self.ui.actionCamera_Settings.setEnabled(True)
+
+    
+        
 
     @QtCore.pyqtSlot()     
     def alert(self,errorString):

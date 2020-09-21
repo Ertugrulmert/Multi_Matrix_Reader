@@ -352,8 +352,17 @@ while True:
     print("time diff : ", t2-t1)
     # Display the resulting frame
     
+    if  newFrame.shape[1] > 1080 :
+        scaling_factor = 1080/newFrame.shape[1]
+    
+        width = int(newFrame.shape[1] * scaling_factor)
+        height = int(newFrame.shape[0] * scaling_factor)
+        dim = (width, height)
 
-    out.write(newFrame)
+        #np.imshow(frame)
+        newFrame= cv2.resize(newFrame, dim )
+        print("newFrame: ",newFrame.shape)
+    #out.write(newFrame)
     
     cv2.namedWindow("window", cv2.WND_PROP_FULLSCREEN)
     cv2.setWindowProperty("window",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)

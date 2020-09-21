@@ -50,6 +50,8 @@ class frameProcessor:
          
          self.decoded_matrices, self.already_detected, self.not_detected = [],[],[]
          
+         self.autoLowerRes = True
+         
      
     def reset(self):
          self.frame = []
@@ -93,7 +95,7 @@ class frameProcessor:
         font = cv2.FONT_HERSHEY_SIMPLEX
         
         for green_box in self.already_detected:
-            print("decoded: ", green_box[2])
+            #print("decoded: ", green_box[2])
             
             #draw datamatrix outline
             cv2.drawContours(self.frame, [green_box[1]], -1,(50,105,50),fontSize*3)
@@ -111,12 +113,23 @@ class frameProcessor:
             if len(red_box[1]):
                 cv2.drawContours(self.frame, [red_box[1]], -1,(0,100,255), fontSize*3)
                 
-    
+        if self.autoLowerRes and max(self.image_h,self.image_w) > 1921 :
+             self.frame = frameProcessor.downSize(self.frame)
+             print(self.frame.shape)
                 
-
-        
     
-        
+    def downSize(frame):
+
+                scaling_factor = 1920/frame.shape[1]
+            
+                width = int(frame.shape[1] * scaling_factor)
+                height = int(frame.shape[0] * scaling_factor)
+                dim = (width, height)
+                print(frame.shape)
+                #np.imshow(frame)
+                return cv2.resize(frame, dim )
+
+              
         
     def preProcessFrame(self,frame):
         #frame is processed twice, once for box detection, once for datamatrix decoding and detection.
@@ -337,7 +350,7 @@ class frameProcessor:
                     
                     if len(temp_result):       
                         self.already_detected.append([box,box2,temp_result[0].data])
-                        self.decoded_matrices.append(temp_result[0].data)
+                        self.decoded_matrices.append(str(temp_result[0].data))
                         
                         decoded = True          
                         break

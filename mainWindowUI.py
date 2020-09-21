@@ -117,6 +117,11 @@ class Ui_MainWindow(object):
         self.camSelectMenu = QtWidgets.QMenu(self.menubar)
         self.camSelectMenu.setObjectName("camSelectMenu")
         
+        #RESOLUTION MENU
+        self.camResolutionMenu = QtWidgets.QMenu(self.menubar)
+        self.camResolutionMenu.setObjectName("camResolutionMenu")
+        self.camResolutionMenu.setEnabled(False)
+        
         
         MainWindow.setMenuBar(self.menubar)
         
@@ -125,10 +130,7 @@ class Ui_MainWindow(object):
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
         
-        # #CAMERA SELECTION OPTION
-        # self.actionSelect_Camera = QtWidgets.QAction(MainWindow)
-        # self.actionSelect_Camera.setEnabled(True)
-        # self.actionSelect_Camera.setObjectName("actionSelect_Camera")
+
         
         #CAMERA SETTINGS OPTION
         self.actionCamera_Settings = QtWidgets.QAction(MainWindow)
@@ -137,12 +139,12 @@ class Ui_MainWindow(object):
         
         #ADDING COMPONENTS
         self.menubar.addAction(self.camSelectMenu.menuAction())
+        self.menubar.addAction(self.camResolutionMenu.menuAction())
         self.menubar.addAction(self.actionCamera_Settings)
 
 
         self.retranslateUi(MainWindow)
         
-        #-------------------SIGNAL CONNECTIONS--------------------
         
         
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -153,6 +155,7 @@ class Ui_MainWindow(object):
         self.startButton.setText(_translate("MainWindow", "Start"))
         self.resetDetectButton.setText(_translate("MainWindow", "Reset Detection"))
         self.camSelectMenu.setTitle(_translate("MainWindow", "Select Camera"))
+        self.camResolutionMenu.setTitle(_translate("MainWindow", "Select Resolution"))
         self.actionCamera_Settings.setText(_translate("MainWindow", "Camera Settings"))
         self.streamLabel.setText(_translate("MainWindow", "No Camera Selected"))
 
