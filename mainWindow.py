@@ -65,13 +65,14 @@ class MainWindow(QMainWindow):
     def processFrame(self,frame):
         if self.processor is not None:
             frame, matrices = self.processor.process(frame)
+            if self.processor.isAllDetected():
+                self.ui.successLabel.setText("SUCCESS")
+                self.ui.successLabel.setStyleSheet("background-color: lightgreen") 
+            else: self.ui.successLabel.setText("PROCESSING")
             self.updateList(matrices)
             self.drawFrame(frame)
-            # processorThread = ProcessorThread(self.processor.process(frame))
-            # processorThread.signals.newFrame.connect(self.drawFrame)
-            # processorThread.signals.matrixList.connect(self.updateList)
-            # processorThread.signals.finished.connect(self.getNewFrame)
-            # self.threadpool.start(processorThread)
+
+        
     @QtCore.pyqtSlot()    
     def updateList(self,newList):
         self.ui.listWidget.clear()
@@ -85,8 +86,6 @@ class MainWindow(QMainWindow):
             if not self.camera.isReady():
                 continue
             
-            print (threading.active_count())
-            #print (threading.currentThread().getName())
             ret ,frame= self.camera.captureFrame()
             if not ret:
                 continue
@@ -100,16 +99,8 @@ class MainWindow(QMainWindow):
                     frame = frameProcessor.downSize(frame)
                 self.drawFrame(frame)
 
-            # captureThread = CaptureThread(self.camera)
             
-            # print("thread built")
-            # if self.processing: captureThread.frameSignal.connect(self.processFrame)
-            # else: captureThread.frameSignal.connect(self.drawFrame)
-            # self.threadpool.start(captureThread)
-            # print("thread started")
-            
-        
-            
+                    
     @QtCore.pyqtSlot()            
     def drawFrame(self,frame):
         
@@ -117,7 +108,6 @@ class MainWindow(QMainWindow):
         img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], QtGui.QImage.Format_RGB888)
         pix = QtGui.QPixmap.fromImage(img)
         self.ui.streamLabel.setPixmap(pix) 
-        #time.sleep(0.05)
         self.getNewFrame()
     
         
@@ -186,6 +176,7 @@ class MainWindow(QMainWindow):
             self.thread.start()
             self.ui.camResolutionMenu.setEnabled(True)
             self.ui.actionCamera_Settings.setEnabled(True)
+            self.ui.successLabel.setText("READY")
 
     
         

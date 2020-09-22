@@ -1,10 +1,10 @@
-import traceback, sys, time
-import numpy as np
-from PyQt5 import QtCore , QtWidgets, QtGui, QtMultimedia, QtMultimediaWidgets
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable
-from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow
-from PyQt5.QtMultimedia import QCamera, QCameraInfo, QMediaObject, QCameraViewfinderSettings, QCameraImageCapture
-from PyQt5.QtMultimediaWidgets import QCameraViewfinder
+# import traceback, sys, time
+# import numpy as np
+# from PyQt5 import QtCore , QtWidgets, QtGui, QtMultimedia, QtMultimediaWidgets
+# from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable
+# from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow
+# from PyQt5.QtMultimedia import QCamera, QCameraInfo, QMediaObject, QCameraViewfinderSettings, QCameraImageCapture
+# from PyQt5.QtMultimediaWidgets import QCameraViewfinder
 
 
 import cv2
