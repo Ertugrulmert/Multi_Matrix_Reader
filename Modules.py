@@ -1,10 +1,10 @@
 # import traceback, sys, time
 # import numpy as np
-# from PyQt5 import QtCore , QtWidgets, QtGui, QtMultimedia, QtMultimediaWidgets
-# from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QRect, Qt
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen
 # from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow
-# from PyQt5.QtMultimedia import QCamera, QCameraInfo, QMediaObject, QCameraViewfinderSettings, QCameraImageCapture
-# from PyQt5.QtMultimediaWidgets import QCameraViewfinder
+
 
 
 import cv2
@@ -106,98 +106,45 @@ class Camera:
         
         
  
+class LabelwROI(QtWidgets.QLabel):
+    x0,y0,x1,y1 = 0,0,0,0
+    start = False
+    drawROI = False
+    # 
+    def toggleROI(self): 
+        self.drawROI = not self.drawROI
+        x0,y0,x1,y1 = 0,0,0,0
+        start = False
         
-# class ThreadSignals(QObject):
-#     '''
-#     Defines the signals available from a running worker thread.
-
-#     Supported signals are:
-
-#     finished
-#         No data
+    def getROI(self): 
+        if self.drawROI:
+            return (self.x0,self.y0,self.x1,self.y1)
+        else: return (0,0,0,0)
+        
+    def waitROI(self):
+        return self.start
     
-#     error
-#         `tuple` (exctype, value, traceback.format_exc() )
-    
-#     result
-#         `object` data returned from processing, anything
+    def mousePressEvent(self,event):
+        if self.drawROI:
+            self.start = True
+            self.x0 = event.x()
+            self.y0 = event.y()
+         
+    def mouseReleaseEvent(self,event):
+        self.start = False
+        #print(self.x0,self.y0,self.x1,self.y1)
+         # 
+    def mouseMoveEvent(self,event):
+        if self.drawROI and self.start:
+            self.x1 = event.x()
+            self.y1 = event.y()
+            self.update()
 
-#     '''
-#     finished = pyqtSignal()
-#     error = pyqtSignal(tuple)
-#     result = pyqtSignal(object)
-#     reset = pyqtSignal()
-    
-#     matrixList = pyqtSignal(list)
-#     newFrame = pyqtSignal(np.ndarray)
-        
-    
-    
-    
-# class ProcessorThread(QRunnable):
-
-
-#     def __init__(self, processFunc):
-#         super(ProcessorThread, self).__init__()
-
-#         # Store constructor arguments (re-used for processing)
-#         self.process = processFunc
-#         self.signals = ThreadSignals()    
-      
-
-#     @pyqtSlot()
-#     def run(self):
-
-        
-#         # Retrieve args/kwargs here; and fire processing using them
-#         try:
-#             print("trying to process frame")
-#             newFrame, matrixList = self.process
-#         except:
-#             traceback.print_exc()
-#             exctype, value = sys.exc_info()[:2]
-#             self.signals.error.emit((exctype, value, traceback.format_exc()))
-#         else:
-#             self.signals.newFrame.emit(newFrame)
-#             self.signals.matrixList.emit(matrixList)# Return the result of the processing
-#         finally:
-#             self.signals.finished.emit()  # Done
-            
-        
-# class CaptureThread(QRunnable,QObject):
-#     frameSignal = pyqtSignal(object)
-#     noFrame = pyqtSignal(bool)
-#     def __init__(self, cap):
-#         print("init frame")
-#         super(CaptureThread, self).__init__()   
-#         QObject.__init__(self)
-#         self.setAutoDelete(True)
-        
-#         self.cap = cap
-        
-#     @pyqtSlot()
-#     def run(self):
-#         print("trying to capture frame")
-#                 # Retrieve args/kwargs here; and fire processing using them
-#         #try:
-#         hasFrame, frame = self.cap.captureFrame()
-        
-#         #while hasFrame is not None and not hasFrame:
-#         #    hasframe, frame = self.frameFunc
-#         # except:
-#         #     traceback.print_exc()
-#         #     exctype, value = sys.exc_info()[:2]
-#         #     self.signals.error.emit((exctype, value, traceback.format_exc()))
-#         #else:
-#         if hasFrame is not None and not hasFrame:
-#             time.sleep(5)
-#             hasFrame, frame = self.cap.captureFrame()
-#             #self.noFrame.emit()
-#         if hasFrame is not None and hasFrame:    
-#             self.frameSignal.emit(frame)
-
-            
-        
-        
-        
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.drawROI:
+            rect =QRect(self.x0, self.y0, abs(self.x1-self.x0), abs(self.y1-self.y0))
+            painter = QPainter(self)
+            painter.setPen(QPen(Qt.red,2,Qt.SolidLine))
+            painter.drawRect(rect)
         

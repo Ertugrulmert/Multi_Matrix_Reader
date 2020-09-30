@@ -5,7 +5,6 @@ from PyQt5.QtCore    import *
 from PyQt5    import QtCore, QtWidgets, QtGui, QtMultimedia, QtMultimediaWidgets
 
 from mainWindowUI import Ui_MainWindow
-from camSettingsUI import Ui_camSettingsDialog
 
 from Modules import Camera
 from frameProcessor import frameProcessor
@@ -29,6 +28,7 @@ class MainWindow(QMainWindow):
         self.camera = None
         
         self.processing = False
+        self.ROI = (0,0,0,0)
         self.resetProcess = False
         self.thread = None
 
@@ -43,6 +43,8 @@ class MainWindow(QMainWindow):
         
         self.ui.startButton.clicked.connect(self.toggleProcessing)
         self.ui.resetDetectButton.clicked.connect(self.resetProcessor)
+        
+        self.ui.ROIButton.clicked.connect(self.ui.streamLabel.toggleROI)
     
     @QtCore.pyqtSlot()
     def closeEvent(self,event):  
@@ -64,7 +66,10 @@ class MainWindow(QMainWindow):
     @QtCore.pyqtSlot() 
     def processFrame(self,frame):
         if self.processor is not None:
-            frame, matrices = self.processor.process(frame)
+            if not self.ui.streamLabel.waitROI():
+                self.ROI = self.ui.streamLabel.getROI()
+            print(self.ROI)
+            frame, matrices = self.processor.process(frame,self.ROI)
             if self.processor.isAllDetected():
                 self.ui.successLabel.setText("SUCCESS")
                 self.ui.successLabel.setStyleSheet("background-color: lightgreen") 

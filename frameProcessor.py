@@ -5,11 +5,6 @@ Created on Mon Sep 14 11:08:04 2020
 @author: User
 """
 
-import ssl
-import urllib.request
-
-
-
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,6 +15,7 @@ import itertools as it
 import math
 import shapely
 from shapely.geometry import Polygon,box
+from shapely.affinity import translate
 from pylibdmtx.pylibdmtx import decode
 
 
@@ -153,7 +149,7 @@ class frameProcessor:
     #BOX DETECTION THRESHOLDS
     
 
-    area_threshold = 30*30
+    area_threshold = 10*10
     aspect_ratio_threshold = 7
     adjacency_threshold = 0.05
 
@@ -171,6 +167,7 @@ class frameProcessor:
          
          self.frame = []
          self.image_h, self.image_w = 0,0
+         self.ROI = (0,0,0,0)
          
          self.decoded_matrices, self.already_detected, self.not_detected = [],[],[]
          
@@ -183,6 +180,7 @@ class frameProcessor:
         
          self.frame = []
          self.image_h, self.image_w = 0,0
+         self.ROI = (0,0,0,0)
          
          self.decoded_matrices, self.already_detected = [],[]
          self.allDetected = False
@@ -192,12 +190,13 @@ class frameProcessor:
         
         self.frame = frame
         self.image_h, self.image_w, _ =frame.shape
-        
-        
-    # TODO : ADD FUNCTIONS TO SELECT AND DRAW ROI 
-             
     
-    def process(self,frame):
+        
+        
+        
+    # TODO : ADD FUNCTIONS TO SELECT AND DRAW ROI         
+    
+    def process(self,frame, ROI = (0,0,0,0)):
         
         """Combines all sub-tasks of the class, outputs both detected datamatrix
         code list and new frame with all boxes drawn."""
@@ -207,14 +206,32 @@ class frameProcessor:
         self.frame = frame
         self.not_detected = []
         self.allDetected = False
-
-        self.image_h, self.image_w, _ =frame.shape
         
-        #PREPROCESSING
-        matrix_thresholded, matrix_detect_frame, box_contours = self.preProcessFrame(frame)
         
-        #BOX DETECTION
-        boxes = self.boxDetection(box_contours )
+        x0,y0,x1,y1 = ROI
+        if x1 and y1 and x1<frame.shape[1] and y1<frame.shape[0]:
+            
+            self.ROI = ROI
+            self.image_h, self.image_w = ROI[3]-ROI[1],ROI[2]-ROI[0]
+            #print(ROI)
+            #print(frame.shape)
+            tempframe = frame[y0:y1,x0:x1]
+            
+            #PREPROCESSING
+            matrix_thresholded, matrix_detect_frame, box_contours = self.preProcessFrame(tempframe)
+            
+            #BOX DETECTION
+            boxes = self.boxDetection(box_contours )
+            
+        else:
+            self.image_h, self.image_w, _ =frame.shape
+            
+            #PREPROCESSING
+            matrix_thresholded, matrix_detect_frame, box_contours = self.preProcessFrame(frame)
+            
+            #BOX DETECTION
+            boxes = self.boxDetection(box_contours )
+        
 
         #MATRIX DETECTION AND DECODING
         self.processMatrices(matrix_thresholded, matrix_detect_frame, boxes)
@@ -225,7 +242,9 @@ class frameProcessor:
         
         return self.frame, self.decoded_matrices
         
-        
+
+            
+            
     def drawNewFrame(self):
         
         """"Draws new frame with detected boxes."""
@@ -233,7 +252,7 @@ class frameProcessor:
         margin = 5
         fontSize = 1
         font = cv2.FONT_HERSHEY_SIMPLEX
-        
+        #print("proc roi",self.ROI)
         # green boxes are for properly decoded matrices and their boxes
         for green_box in self.already_detected:
             
@@ -260,7 +279,7 @@ class frameProcessor:
             
                 
         #automatically lower resolution of output frame 
-        if self.autoLowerRes and max(self.image_h,self.image_w) > 1921 :
+        if self.autoLowerRes and max(self.frame.shape[0],self.frame.shape[1]) > 1921 :
              self.frame = frameProcessor.downSize(self.frame)
              #print(self.frame.shape)
              
@@ -275,7 +294,6 @@ class frameProcessor:
         width = int(frame.shape[1] * scaling_factor)
         height = int(frame.shape[0] * scaling_factor)
         dim = (width, height)
-        print(frame.shape)
         #np.imshow(frame)
         return cv2.resize(frame, dim )
 
@@ -370,11 +388,11 @@ class frameProcessor:
                     j=0
                     
                     #discard previously detected boxes
-                    if len(self.already_detected):
-                        for old_box in self.already_detected:
-                            if Polygon(old_box[0]).intersects(boxPoly1):
-                                addRect = False
-                                break
+                    # if len(self.already_detected):
+                        # for old_box in self.already_detected:
+                        #     if Polygon(old_box[0]).intersects(translate(boxPoly1,self.ROI[0],self.ROI[1])):
+                        #         addRect = False
+                        #         break
                                                        
                             
                     while addRect and j < len(rects):
@@ -384,7 +402,7 @@ class frameProcessor:
                         
                         #CHECK FOR DUPLICATES AND SHAPES AT EDGES OF FRAME
                         if boxPoly1.almost_equals(boxPoly2, decimal=0) or boxPoly1.equals(boxPoly2) \
-                        or not boxPoly1.within(Polygon([(1,1),(1,self.image_h-2),(self.image_w-2,self.image_h-2),(self.image_w-2,1)])):
+                        or not boxPoly1.within(Polygon([(1,1),(1,self.image_h-1),(self.image_w-1,self.image_h-1),(self.image_w-1,1)])):
                             addRect = False
                             break     
                         
@@ -415,7 +433,7 @@ class frameProcessor:
                     if addRect:
                         rects.append(rect)
                         boxes.append(box)
-                        #print("RECT: ",rect)
+                        print("RECT: ",rect)
                         
                         
         return boxes
@@ -501,19 +519,25 @@ class frameProcessor:
                     
                     ta = time.time()
                     temp_result = decode(  warped )
-                    print("decode time: ",time.time()-ta)
-                    print("matrix size: ",warped.shape)
+                    #print("decode time: ",time.time()-ta)
+                    #print("matrix size: ",warped.shape)
                     
                     #if decoding successful
-                    if len(temp_result):       
-                        self.already_detected.append([box,box2,temp_result[0].data])
+                    if len(temp_result):   
+                        newbox = np.array( [(x+self.ROI[0],y+self.ROI[1]) for [x,y] in box] )
+                        newbox2 = np.array( [[x+self.ROI[0],y+self.ROI[1]] for [x,y] in box2] )
+                        self.already_detected.append([newbox,newbox2,temp_result[0].data])
                         self.decoded_matrices.append(str(temp_result[0].data))
                         
                         decoded = True          
                         break
             
             if not decoded:
-                self.not_detected.append([box,box2])
+                #print(box)
+                newbox = np.array( [(x+self.ROI[0],y+self.ROI[1]) for [x,y] in box] )
+                #print(newbox)
+                newbox2 = np.array( [ [x+self.ROI[0],y+self.ROI[1]] for [x,y] in box2] )
+                self.not_detected.append([newbox,newbox2])
                 
 #---------------------------------------------------------------------------------------------------------------
             
