@@ -1,8 +1,6 @@
-import sys,cv2, threading, time
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui     import *
-from PyQt5.QtCore    import *
-from PyQt5    import QtCore, QtWidgets, QtGui, QtMultimedia, QtMultimediaWidgets
+import cv2, threading, time, sys
+
+from PyQt5   import QtCore, QtWidgets, QtGui, QtMultimedia
 
 from mainWindowUI import Ui_MainWindow
 
@@ -18,75 +16,44 @@ from frameProcessor import frameProcessor
 #         self.ui.okButton.clicked.connect(self.close)
         
 
-
-        
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
+class Worker(QtCore.QObject):
+    #getFrame = QtCore.pyqtSignal()
+    frameReady = QtCore.pyqtSignal(QtGui.QImage,float)
+    updateList = QtCore.pyqtSignal(list)
+    successUpdate = QtCore.pyqtSignal(bool)
+    QtCore.pyqtSignal(list)
+    
+    
+    
+    def __init__(self, parent=None):
+        super(Worker, self).__init__(parent)
         
         self.processor = frameProcessor()
         self.camera = None
-        
         self.processing = False
-        self.ROI = (0,0,0,0)
         self.resetProcess = False
-        self.thread = None
-
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
-        
-        self.ui.camSelectMenu.aboutToShow.connect(self.prepCamera)
-        self.ui.camResolutionMenu.aboutToShow.connect(self.showResolutions)
-        
-        #self.ui.actionSelect_Camera.triggered.connect(self.prepCamera)
-        self.ui.actionCamera_Settings.triggered.connect(self.settingsBox)
-        
-        self.ui.startButton.clicked.connect(self.toggleProcessing)
-        self.ui.resetDetectButton.clicked.connect(self.resetProcessor)
-        
-        self.ui.ROIButton.clicked.connect(self.ui.streamLabel.toggleROI)
-    
-    @QtCore.pyqtSlot()
-    def closeEvent(self,event):  
-        if self.camera is not None: 
-            self.camera.close()
-            self.camera = None
-            self.processing = None
-            if self.thread is not None and self.thread.is_alive():
-                self.thread.join()
-        event.accept() 
-        
-    @QtCore.pyqtSlot()
-    def resetProcessor(self):
-        self.resetProcess = True
-        
-    @QtCore.pyqtSlot()    
-    def toggleProcessing(self): self.processing = not self.processing
-    
-    @QtCore.pyqtSlot() 
-    def processFrame(self,frame):
-        if self.processor is not None:
-            if not self.ui.streamLabel.waitROI():
-                self.ROI = self.ui.streamLabel.getROI()
-            print(self.ROI)
-            frame, matrices = self.processor.process(frame,self.ROI)
-            if self.processor.isAllDetected():
-                self.ui.successLabel.setText("SUCCESS")
-                self.ui.successLabel.setStyleSheet("background-color: lightgreen") 
-            else: self.ui.successLabel.setText("PROCESSING")
-            self.updateList(matrices)
-            self.drawFrame(frame)
-
-        
-    @QtCore.pyqtSlot()    
-    def updateList(self,newList):
-        self.ui.listWidget.clear()
-        self.ui.listWidget.addItems(newList)
+        self.img = None
+        self.threadactive = True
+        self.ROI = (0,0,0,0)
         
         
-    def getNewFrame(self):
+    def setCamera(self,camera):
+        self.camera = camera
         
-        while self.camera is not None:
+    @QtCore.pyqtSlot(int)    
+    def setCameraResolution(self,i):
+        self.camera.pause_cam()
+        self.camera.set_resolution(i)
+        self.camera.resume_cam()
+        
+        
+    @QtCore.pyqtSlot(bool,bool,tuple)    
+    def getNewFrame(self,processing,resetProcess,ROI):
+        self.processing = processing
+        self.resetProcess = resetProcess
+        self.ROI = ROI
+        scaling_factor = 1
+        while self.threadactive and self.camera is not None:
             
             if not self.camera.isReady():
                 continue
@@ -98,30 +65,142 @@ class MainWindow(QMainWindow):
                 self.processor.reset()
                 self.resetProcess = False
                 
-            if self.processing: self.processFrame(frame)
-            else: 
-                if  frame.shape[1] > 1920 :
-                    frame = frameProcessor.downSize(frame)
-                self.drawFrame(frame)
-
+            if self.processing: 
+                frame = self.processFrame(frame)
             
-                    
-    @QtCore.pyqtSlot()            
-    def drawFrame(self,frame):
+            if  frame.shape[1] > 1920 :
+                frame,scaling_factor = frameProcessor.downSize(frame)
+            
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            self.img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], QtGui.QImage.Format_RGB888)
+            break
         
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = QtGui.QImage(frame, frame.shape[1], frame.shape[0], QtGui.QImage.Format_RGB888)
-        pix = QtGui.QPixmap.fromImage(img)
-        self.ui.streamLabel.setPixmap(pix) 
-        self.getNewFrame()
+        self.frameReady.emit(self.img,scaling_factor)
+        
+            
+    def processFrame(self,frame):
+        if self.threadactive and self.processor is not None:
+            
+            # try:
+            frame, matrices = self.processor.process(frame,self.ROI)
+            self.updateList.emit(matrices)
+            # except:
+            #     print("Processor Exception")  
+            #     print(sys.exc_info()[0], "occurred.")
+            #     self.processing = False
+            #     return
+        
+            if self.processor.isAllDetected():
+                self.successUpdate.emit(True)
+            else: 
+                self.successUpdate.emit(False)
+            return frame
+    
+    def stop(self):
+        self.threadactive = False
+        self.camera.close()
     
         
+class MainWindow(QtWidgets.QMainWindow, QtCore.QObject):
+    requestFrame = QtCore.pyqtSignal(bool,bool,tuple)
+    setThreadCamera = QtCore.pyqtSignal(Camera)
+    
+    def __init__(self):
+        super().__init__()
+        self.camera = None
+        self.processing = False
+        self.resetProcess = False
+        self.autoScale = (1,1)
         
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
+        
+        self.thread1 = QtCore.QThread()
+        self.worker = Worker()
+        self.worker.moveToThread(self.thread1)
+        self.thread1.start()
+        
+        self.worker.frameReady.connect(self.drawFrame)
+        self.worker.updateList.connect(self.updateList)
+        self.worker.successUpdate.connect(self.successUpdate)
+        self.ui.startButton.clicked.connect(self.toggleProcessing)
+        self.ui.resetDetectButton.clicked.connect(self.resetProcessor)
+        
+        self.requestFrame.connect(self.worker.getNewFrame)
+        self.setThreadCamera.connect(self.worker.setCamera)
+      
+        self.ui.camSelectMenu.aboutToShow.connect(self.prepCamera)
+        self.ui.camResolutionMenu.aboutToShow.connect(self.showResolutions)
+        
+        self.ui.actionCamera_Settings.triggered.connect(self.settingsBox)
+        self.ui.ROIButton.clicked.connect(self.ui.streamLabel.toggleROI)
+    
+    @QtCore.pyqtSlot()
+    def closeEvent(self,event):  
+        if self.camera is not None: 
+            self.camera.close()
+            self.camera = None
+
+            if self.thread1 is not None and self.thread1.isRunning():
+                 self.thread1.terminate()
+                 self.thread1.wait()
+        event.accept() 
+        
+           
+    @QtCore.pyqtSlot(list)    
+    def updateList(self,newList):
+        self.ui.listWidget.clear()
+        self.ui.listWidget.addItems(newList)
         
     @QtCore.pyqtSlot()
     def settingsBox(self):
         if self.camera is not None and self.camera.isReady():
             self.camera.open_settings_dialog()
+            
+    def toggleProcessing(self): 
+        self.processing = not self.processing
+        print("toggle",self.processing)
+        if not self.processing:
+            self.ui.successLabel.setText("PROCESSING")
+            self.ui.successLabel.setStyleSheet("")
+
+    def resetProcessor(self):
+        self.resetProcess = True
+        
+    @QtCore.pyqtSlot(bool)
+    def successUpdate(self,success):
+        if success:
+            self.ui.successLabel.setText("SUCCESS")
+            self.ui.successLabel.setStyleSheet("background-color: lightgreen") 
+        else:
+            self.ui.successLabel.setText("PROCESSING")
+            self.ui.successLabel.setStyleSheet("")
+                    
+    @QtCore.pyqtSlot(QtGui.QImage,float)            
+    def drawFrame(self,img,scaling_factor):
+        
+        realsize = (img.height(),img.width())
+        pix = QtGui.QPixmap.fromImage(img)
+              
+        # try:
+        self.ui.streamLabel.setPixmap(pix) 
+        scaledsize = pix.rect()
+        
+        self.autoScale =( scaledsize.height()/realsize[0]/scaling_factor , scaledsize.width()/realsize[1]/scaling_factor )
+        print(self.autoScale)
+        
+        self.ROI = self.ui.streamLabel.getROI()
+        self.ROI = ( int(self.ROI[0]*self.autoScale[0]) , int(self.ROI[1]*self.autoScale[1]) ,\
+                   int(self.ROI[2]*self.autoScale[0])  , int(self.ROI[3]*self.autoScale[1]) )
+        self.requestFrame.emit(self.processing,self.resetProcess,self.ROI)
+        self.resetProcess = False
+            
+        # except:
+        #     print("Drawing Exception")
+        #     print(sys.exc_info()[0], "occurred.")
+        #     time.sleep(0.5)
+    
+        
             
     def showResolutions(self):
         if self.camera is not None and self.camera.isReady():
@@ -132,15 +211,10 @@ class MainWindow(QMainWindow):
                 resAction = self.ui.camResolutionMenu.addAction("Resolution %d" % i)
                 resAction.setText(cameraResList[i])
                 resAction.setCheckable(True)
-                resAction.triggered.connect( lambda chk, i=i: self.setResolution(i) )
+                resAction.triggered.connect( lambda chk, i=i: self.worker.setCameraResolution(i) )
                 
             self.update()
     
-    @QtCore.pyqtSlot()
-    def setResolution(self,i):
-        self.camera.pause_cam()
-        self.camera.set_resolution(i)
-        self.camera.resume_cam()
             
         
     @QtCore.pyqtSlot()
@@ -164,7 +238,7 @@ class MainWindow(QMainWindow):
         if self.camera is not None: 
             self.camera.close()
             self.camera = None
-            if self.thread is not None and self.thread.is_alive() : self.thread.join()
+            #if self.thread is not None and self.thread.is_alive() : self.thread.join()
         
         #QCamera only used to retrieve available camera resolutions
         tempCam = QtMultimedia.QCamera(cameraInfo)
@@ -177,36 +251,33 @@ class MainWindow(QMainWindow):
 
         
         if self.camera.initialize():
-            self.thread = threading.Thread(target=self.getNewFrame)
-            self.thread.start()
+            self.setThreadCamera.emit(self.camera)
+            
+            # self.thread = threading.Thread(target=self.getNewFrame)
+            # self.thread.start()
+            
             self.ui.camResolutionMenu.setEnabled(True)
             self.ui.actionCamera_Settings.setEnabled(True)
             self.ui.successLabel.setText("READY")
-
+            
+            self.ROI = self.ui.streamLabel.getROI()
+            self.requestFrame.emit(self.processing,self.resetProcess,self.ROI)
+            
+            self.resetProcess = False
     
         
 
-    @QtCore.pyqtSlot()     
-    def alert(self,errorString):
+    # @QtCore.pyqtSlot()     
+    # def alert(self,errorString):
         
-        err = QErrorMessage(self)
-        err.showMessage(errorString)
+    #     err = QErrorMessage(self)
+    #     err.showMessage(errorString)
         
-        msg = QMessageBox()
-        msg.setWindowTitle("Connection Error")
-        msg.setText("Camera disconnected.")
-        msg.setIcon(QMessageBox.Critical)
-        msg.setStandardButtons(QMessageBox.Ok)
-        x = msg.exec_()
+    #     msg = QMessageBox()
+    #     msg.setWindowTitle("Connection Error")
+    #     msg.setText("Camera disconnected.")
+    #     msg.setIcon(QMessageBox.Critical)
+    #     msg.setStandardButtons(QMessageBox.Ok)
+    #     x = msg.exec_()
           
         
-        
-        
-
-if __name__ == '__main__':
-    
-    
-    app = QApplication(sys.argv)
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec_())

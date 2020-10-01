@@ -202,7 +202,6 @@ class frameProcessor:
         code list and new frame with all boxes drawn."""
         
         #TODO : ERROR HANDLING
-        
         self.frame = frame
         self.not_detected = []
         self.allDetected = False
@@ -224,6 +223,7 @@ class frameProcessor:
             boxes = self.boxDetection(box_contours )
             
         else:
+            self.ROI = (0,0,0,0)
             self.image_h, self.image_w, _ =frame.shape
             
             #PREPROCESSING
@@ -276,12 +276,14 @@ class frameProcessor:
                 cv2.drawContours(self.frame, [red_box[1]], -1,(0,100,255), fontSize*3)
                 
         if not len(self.not_detected): self.allDetected = True
+        
+        cv2.rectangle(self.frame, (self.ROI[0],self.ROI[1]), (self.ROI[2],self.ROI[3]), (0,70,255), 3)
             
                 
-        #automatically lower resolution of output frame 
-        if self.autoLowerRes and max(self.frame.shape[0],self.frame.shape[1]) > 1921 :
-             self.frame = frameProcessor.downSize(self.frame)
-             #print(self.frame.shape)
+        # #automatically lower resolution of output frame 
+        # if self.autoLowerRes and max(self.frame.shape[0],self.frame.shape[1]) > 1921 :
+        #      self.frame = frameProcessor.downSize(self.frame)
+        #      #print(self.frame.shape)
              
     def isAllDetected(self): return self.allDetected
                 
@@ -295,7 +297,7 @@ class frameProcessor:
         height = int(frame.shape[0] * scaling_factor)
         dim = (width, height)
         #np.imshow(frame)
-        return cv2.resize(frame, dim )
+        return cv2.resize(frame, dim ),scaling_factor
 
               
         
@@ -388,11 +390,11 @@ class frameProcessor:
                     j=0
                     
                     #discard previously detected boxes
-                    # if len(self.already_detected):
-                        # for old_box in self.already_detected:
-                        #     if Polygon(old_box[0]).intersects(translate(boxPoly1,self.ROI[0],self.ROI[1])):
-                        #         addRect = False
-                        #         break
+                    if len(self.already_detected):
+                        for old_box in self.already_detected:
+                            if Polygon(old_box[0]).intersects(translate(boxPoly1,self.ROI[0],self.ROI[1])):
+                                addRect = False
+                                break
                                                        
                             
                     while addRect and j < len(rects):

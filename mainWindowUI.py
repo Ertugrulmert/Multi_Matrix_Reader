@@ -130,6 +130,7 @@ class Ui_MainWindow(object):
         self.streamLabel.setSizePolicy(sizePolicy)
         self.streamLabel.setObjectName("streamLabel")
         self.streamLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+        #self.streamLabel.setScaledContents(True)
         
         self.verticalLayout_1.addWidget(self.successLabel)
         self.verticalLayout_1.addWidget(self.streamLabel)
@@ -193,12 +194,3 @@ class Ui_MainWindow(object):
         #self.streamLabel.setText(_translate("MainWindow", "No Camera Selected"))
         self.successLabel.setText(_translate("MainWindow", "No Camera Selected"))
 
-
-# if __name__ == "__main__":
-#     import sys
-#     app = QtWidgets.QApplication(sys.argv)
-#     MainWindow = QtWidgets.QMainWindow()
-#     ui = Ui_MainWindow()
-#     ui.setupUi(MainWindow)
-#     MainWindow.show()
-#     sys.exit(app.exec_())

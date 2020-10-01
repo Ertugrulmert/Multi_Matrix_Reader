@@ -1,12 +1,6 @@
-# import traceback, sys, time
-# import numpy as np
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QRect, Qt
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen
-# from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow
-
-
-
 import cv2
 class Camera:
     
@@ -106,6 +100,7 @@ class Camera:
         
         
  
+        
 class LabelwROI(QtWidgets.QLabel):
     x0,y0,x1,y1 = 0,0,0,0
     start = False
@@ -117,12 +112,12 @@ class LabelwROI(QtWidgets.QLabel):
         start = False
         
     def getROI(self): 
-        if self.drawROI:
-            return (self.x0,self.y0,self.x1,self.y1)
+        if self.drawROI and not self.start:
+            
+            if self.pixmap():
+                
+                return (self.x0,self.y0,self.x1,self.y1)
         else: return (0,0,0,0)
-        
-    def waitROI(self):
-        return self.start
     
     def mousePressEvent(self,event):
         if self.drawROI:
