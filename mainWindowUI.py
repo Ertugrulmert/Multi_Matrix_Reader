@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'mainWindowUI.ui'
 #
@@ -130,7 +129,6 @@ class Ui_MainWindow(object):
         self.streamLabel.setSizePolicy(sizePolicy)
         self.streamLabel.setObjectName("streamLabel")
         self.streamLabel.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        #self.streamLabel.setScaledContents(True)
         
         self.verticalLayout_1.addWidget(self.successLabel)
         self.verticalLayout_1.addWidget(self.streamLabel)
@@ -170,11 +168,36 @@ class Ui_MainWindow(object):
         self.actionCamera_Settings.setEnabled(False)
         self.actionCamera_Settings.setObjectName("actionCamera_Settings")
         
-        #ADDING COMPONENTS
+        
+        #DATABASE MENU
+        self.dataBaseMenu = QtWidgets.QMenu(self.menubar)
+        self.dataBaseMenu.setObjectName("dataBaseMenu")
+        
+        self.actionLogin = QtWidgets.QAction(MainWindow)
+        self.actionLogin.setObjectName("Login")
+        
+        self.actionDisplay = QtWidgets.QAction(MainWindow)
+        self.actionDisplay.setEnabled(False)
+        self.actionDisplay.setObjectName("Display")
+        
+        self.actionUpload = QtWidgets.QAction(MainWindow)
+        self.actionUpload.setEnabled(False)
+        self.actionUpload.setObjectName("Upload")
+        
+        self.actionDelete = QtWidgets.QAction(MainWindow)
+        self.actionDelete.setEnabled(False)
+        self.actionDelete.setObjectName("Delete_Today")
+        
+        #ADDING COMPONENTS        
+        self.dataBaseMenu.addAction(self.actionLogin)
+        self.dataBaseMenu.addAction(self.actionDisplay )
+        self.dataBaseMenu.addAction(self.actionUpload)
+        self.dataBaseMenu.addAction(self.actionDelete)
+        
         self.menubar.addAction(self.camSelectMenu.menuAction())
         self.menubar.addAction(self.camResolutionMenu.menuAction())
         self.menubar.addAction(self.actionCamera_Settings)
-
+        self.menubar.addAction(self.dataBaseMenu.menuAction())
 
         self.retranslateUi(MainWindow)
         
@@ -190,7 +213,12 @@ class Ui_MainWindow(object):
         self.ROIButton.setText(_translate("MainWindow", "ROI Selection"))
         self.camSelectMenu.setTitle(_translate("MainWindow", "Select Camera"))
         self.camResolutionMenu.setTitle(_translate("MainWindow", "Select Resolution"))
+        self.dataBaseMenu.setTitle(_translate("MainWindow", "Database"))
         self.actionCamera_Settings.setText(_translate("MainWindow", "Camera Settings"))
-        #self.streamLabel.setText(_translate("MainWindow", "No Camera Selected"))
         self.successLabel.setText(_translate("MainWindow", "No Camera Selected"))
+        
+        self.actionLogin.setText(_translate("MainWindow", "Login"))
+        self.actionDisplay.setText(_translate("MainWindow", "Display Tables"))
+        self.actionUpload.setText(_translate("MainWindow", "Upload Data"))
+        self.actionDelete.setText(_translate("MainWindow", "Delete Today's Data"))
 

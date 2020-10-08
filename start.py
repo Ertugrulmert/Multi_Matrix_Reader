@@ -10,7 +10,7 @@ import cv2, threading, time
 
 from PyQt5   import QtCore, QtWidgets, QtGui, QtMultimedia
 
-
+#Starting the app
 if not QtWidgets.QApplication.instance():
     app = QtWidgets.QApplication(sys.argv)
 else:

@@ -85,6 +85,11 @@ class frameProcessor:
     
     image_h, image_w : int
         the height and width of the frame
+        
+    ROI : tuple of 4
+        ROI = ( x0,y0,x1,y1 ) represents the coordinates of the two opposite
+        corners of the selected region of interest
+        (0,0,0,0) by default, ROI not used unless a valid ROI is entered
          
     decoded_matrices : list of int
         the list of datamatrix codes decoded in the current round of processing
@@ -112,9 +117,6 @@ class frameProcessor:
         
     reset()  
         Resets the accumulated datamatrices and boxes located previously.
-        
-    setFrame(frame)
-        Used to manually set a frame, not used in normal use of processor.
         
     process(self,frame)
         Combines all sub-tasks of the class, outputs both detected datamatrix
@@ -149,7 +151,7 @@ class frameProcessor:
     #BOX DETECTION THRESHOLDS
     
 
-    area_threshold = 10*10
+    area_threshold = 30*30
     aspect_ratio_threshold = 7
     adjacency_threshold = 0.05
 
@@ -162,7 +164,10 @@ class frameProcessor:
     matrix_margin = 0.2
     
     def __init__(self):
-         
+         """
+        Initialises instance variables
+
+        """
          #INSTANCE ATTRIBUTES INITIALISED
          
          self.frame = []
@@ -176,7 +181,9 @@ class frameProcessor:
          
      
     def reset(self):
-         """Resets the accumulated datamatrices and boxes located previously."""
+         """
+         Resets the accumulated datamatrices and boxes located previously.
+         """
         
          self.frame = []
          self.image_h, self.image_w = 0,0
@@ -184,36 +191,47 @@ class frameProcessor:
          
          self.decoded_matrices, self.already_detected = [],[]
          self.allDetected = False
-        
-    def setFrame(self,frame):
-        """Used to manually set a frame, not used in normal use of processor."""
-        
-        self.frame = frame
-        self.image_h, self.image_w, _ =frame.shape
-    
-        
-        
-        
-    # TODO : ADD FUNCTIONS TO SELECT AND DRAW ROI         
+                      
     
     def process(self,frame, ROI = (0,0,0,0)):
         
-        """Combines all sub-tasks of the class, outputs both detected datamatrix
-        code list and new frame with all boxes drawn."""
+        """
+        Combines all sub-tasks of the class, outputs both detected datamatrix
+        code list and new frame with all boxes drawn.
         
-        #TODO : ERROR HANDLING
+        Parameters
+        ----------
+        frame : np.ndarray
+            frame to be processed
+            
+        ROI : tuple
+            opposite corner coordinates of the rectangular region of interest
+            (0,0,0,0) by default, meaning it is not used by default
+            
+        Returns
+        -------
+        np.ndarray
+            resulting frame with detected boxes
+            
+        list of str
+            list of decoded matrix codes
+        """
+        
         self.frame = frame
         self.not_detected = []
         self.allDetected = False
         
         
         x0,y0,x1,y1 = ROI
-        if x1 and y1 and x1<frame.shape[1] and y1<frame.shape[0]:
+        
+        #checking if a valid ROI was entered 
+        if x1 and y1 and x1<frame.shape[1] and y1<frame.shape[0] and (x1-x0) and (y1-y0):
+            
+            #only the part of the frame lying inside the ROI will be processed
+            #afterwards, new frame will still be drawn using the entire frame
             
             self.ROI = ROI
             self.image_h, self.image_w = ROI[3]-ROI[1],ROI[2]-ROI[0]
-            #print(ROI)
-            #print(frame.shape)
             tempframe = frame[y0:y1,x0:x1]
             
             #PREPROCESSING
@@ -223,6 +241,7 @@ class frameProcessor:
             boxes = self.boxDetection(box_contours )
             
         else:
+            #ROI and frame vertices set to default
             self.ROI = (0,0,0,0)
             self.image_h, self.image_w, _ =frame.shape
             
@@ -247,7 +266,14 @@ class frameProcessor:
             
     def drawNewFrame(self):
         
-        """"Draws new frame with detected boxes."""
+        """"
+        Draws new frame with detected boxes. Frame drawn in place, 
+        on the instance variable "frame"
+        
+        Returns
+        -------
+        None.
+        """
         
         margin = 5
         fontSize = 1
@@ -279,32 +305,64 @@ class frameProcessor:
         
         cv2.rectangle(self.frame, (self.ROI[0],self.ROI[1]), (self.ROI[2],self.ROI[3]), (0,70,255), 3)
             
-                
-        # #automatically lower resolution of output frame 
-        # if self.autoLowerRes and max(self.frame.shape[0],self.frame.shape[1]) > 1921 :
-        #      self.frame = frameProcessor.downSize(self.frame)
-        #      #print(self.frame.shape)
              
-    def isAllDetected(self): return self.allDetected
+    def isAllDetected(self): 
+        """
+        Returns
+        -------
+        bool 
+            whether all box detections resulted in correct matrix decoding
+        """
+        return self.allDetected
                 
     
     def downSize(frame):
-        """Lowers the resolution of a frame to limit it to 1080p at maximum."""
+        """
+        Lowers the resolution of a frame to limit it to 1080p at maximum.
+        
+        Returns
+        -------
+        np.ndarray 
+            frame downsized to limit its width to 1920 pixels
+            
+        float
+            factor used to resize frame, later used calibrations in other functions
+        """
 
         scaling_factor = 1920/frame.shape[1]
     
         width = int(frame.shape[1] * scaling_factor)
         height = int(frame.shape[0] * scaling_factor)
         dim = (width, height)
-        #np.imshow(frame)
+
         return cv2.resize(frame, dim ),scaling_factor
 
               
         
     def preProcessFrame(self,frame):
         
-        """Filters the frame seperately for box detection and matrix decoding,
-        detects contours to be analyzed by boxDetection"""
+        """
+        Filters the frame seperately for box detection and matrix decoding,
+        detects contours to be analyzed by boxDetection
+        
+        Parameters
+        ----------
+        frame : np.ndarray
+            frame to be processed
+            
+        Returns
+        -------
+        np.ndarray
+            frame processed for optimal matrix decoding
+            
+        np.ndarray
+            frame processed for optimal matrix detection
+            
+        list of contour
+            contour: np.ndarray of integer tuples for coordinate pairs
+            contour :[(x0,y0),(x1,y1),(x2,y2)...]
+            list of the contours found 
+        """
         
         #frame is processed twice, once for box detection, once for datamatrix decoding and detection.
         #the two tasks require different processing
@@ -354,8 +412,20 @@ class frameProcessor:
 
     def boxDetection(self, contours):
         
-        """Using thresholds and logic operations, classifies given contours as
-        boxes, outputs detected boxes"""
+        """
+        Using thresholds and logic operations, classifies given contours as
+        boxes, outputs detected boxes
+        
+        Parameters
+        ----------
+        contours : list of contours
+            list of the contours to be processed
+            
+        Returns
+        -------
+        list of contour
+            list of box contours, each contour is a np.ndarray of of four corner coordinate tuples 
+        """
         
         rects = []
         boxes = []
@@ -435,7 +505,6 @@ class frameProcessor:
                     if addRect:
                         rects.append(rect)
                         boxes.append(box)
-                        print("RECT: ",rect)
                         
                         
         return boxes
@@ -444,9 +513,30 @@ class frameProcessor:
 
     
     def processMatrices(self, matrix_thresholded, matrix_detect_frame, boxes):
-        """Detects and decodes datamatrices given detected boxes and preprocessed
-        frames"""
+        """
+        Detects and decodes datamatrices given detected boxes and preprocessed
+        frames
         
+        Parameters
+        ----------
+        matrix_thresholded : np.ndarray
+            frame processed for optimal matrix decoding
+            
+        matrix_detect_fram : np.ndarray
+            frame processed for optimal matrix detection
+            
+        boxes: list of contour
+            contour: np.ndarray of integer tuples for coordinate pairs
+            contour :[(x0,y0),(x1,y1),(x2,y2)...]
+            list of the contours found 
+            
+        Returns
+        -------
+        None
+        
+        Modifies instance variables instead of returning the results
+        
+        """
         for box in boxes:
             
             #comprised of two parts: 1-Matrix Candidate Detection
@@ -454,6 +544,8 @@ class frameProcessor:
             
             decoded = False
             x,y,w,h = cv2.boundingRect(box)
+            
+            #Polygon class used for measuring interactions between geometrical shapes
             boxPoly = Polygon(box)
             boxArea = boxPoly.area
             box2 = []
@@ -461,6 +553,7 @@ class frameProcessor:
             #-------------Matrix Candidate Detection--------------------------
             
             matrix_rotated = []
+            #finding contours within the boxes, these contours are matrix candidates 
             matrix_contours, _= cv2.findContours(matrix_detect_frame[y:y+h,x:x+w], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
             
@@ -474,17 +567,23 @@ class frameProcessor:
                     #IRREGULARITY (NON-RECTANGULARITY) MEASUREMENT
                     irregularity = 0
                     aspect_ratio = 0
-            
+                    
+                    #converting contour to a rectangle
                     rect = cv2.minAreaRect(contour)
                     (x1,y1),(w1,h1),_ = rect
                 
                     rectArea = w1*h1
-        
+                    
+                    #finding how much the contour deviates from the expected
+                    #shape, in terms of rectangularity and ratio of edges
+                    
+                    #IRREGULARITY (NON-RECTANGULARITY) MEASUREMENT
                     irregularity = abs(rectArea-contArea)/rectArea
                 
                     #ASPECT RATIO MEASUREMENT
                     aspect_ratio = w1/h1
                 
+                    #aspect ratio threshold is given as a fractional margin smaller than 1
                     if irregularity < self.irregularity_threshold \
                     and 1-self.aspect_margin < aspect_ratio < 1+self.aspect_margin :
                         matrix_rotated.append(rect)
@@ -521,13 +620,18 @@ class frameProcessor:
                     
                     ta = time.time()
                     temp_result = decode(  warped )
-                    #print("decode time: ",time.time()-ta)
-                    #print("matrix size: ",warped.shape)
+
                     
                     #if decoding successful
                     if len(temp_result):   
+                        
+                        #locations of boxes translated if they are found within a ROI,
+                        #so that they can be drawn at the right coordinates on the original image
+                        
                         newbox = np.array( [(x+self.ROI[0],y+self.ROI[1]) for [x,y] in box] )
                         newbox2 = np.array( [[x+self.ROI[0],y+self.ROI[1]] for [x,y] in box2] )
+                        
+                        #boxes with properly decoded matrices saved in instance variable
                         self.already_detected.append([newbox,newbox2,temp_result[0].data])
                         self.decoded_matrices.append(str(temp_result[0].data))
                         
@@ -535,20 +639,37 @@ class frameProcessor:
                         break
             
             if not decoded:
-                #print(box)
+                #locations of boxes translated if they are found within a ROI,
+                #so that they can be drawn at the right coordinates on the original image
+                
                 newbox = np.array( [(x+self.ROI[0],y+self.ROI[1]) for [x,y] in box] )
-                #print(newbox)
                 newbox2 = np.array( [ [x+self.ROI[0],y+self.ROI[1]] for [x,y] in box2] )
+                #boxes without properly decoded matrices saved in instance variable
                 self.not_detected.append([newbox,newbox2])
                 
 #---------------------------------------------------------------------------------------------------------------
             
     def removeDuplicates(self,boxes):
-        """removes duplicated boxes in case the same boxes are detected again"""
+        """
+        removes duplicated boxes in case the same boxes are detected again
+        
+        Parameters
+        ----------
+        boxes : list of contours
+            list of the box contours to be processed, 
+            each contour is a np.ndarray of of four corner coordinate tuples 
+            
+        Returns
+        -------
+        list of contour
+            list of box contours without duplicates, 
+            each contour is a np.ndarray of of four corner coordinate tuples 
+        """
         i=0
         while i < len(boxes):
             points1 = cv2.boxPoints(boxes[i])
             points1 = np.int0(points1) 
+            #Polygon class used to determine shapes that are too similar to be seperate objects
             poly1 = Polygon(points1)
     
             j = i+1
@@ -557,6 +678,7 @@ class frameProcessor:
                 points2 = cv2.boxPoints(boxes[j])
                 points2 = np.int0(points2) 
                 poly2 = Polygon( points2 )
+                #almost equals function is the simiarty measure
                 if poly1.equals(poly2) or poly1.almost_equals(poly2, decimal=-1):
                     del boxes[j]
                 else: j += 1
