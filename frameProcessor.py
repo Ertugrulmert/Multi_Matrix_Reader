@@ -2,7 +2,7 @@
 """
 Created on Mon Sep 14 11:08:04 2020
 
-@author: User
+@author: Mert Ertugrul
 """
 
 import time
