@@ -9,8 +9,6 @@ This repository contains a python based desktop application that aims to streaml
 
 The application requires live camera footage from a USB 3.0 camera. Drug boxes are placed on a platform with a preferably dark surface as detection is significantly more robust with black or dark background textures. The camera is placed approximately one meter above the platform, although camera properties are adjustable to work better with other distances from the platform. Using the camera footage, the desktop application detects multiple drug boxes placed on the platform at a time and decodes their data matrices. 
 
-## Table of Contents
-
 
 ### Setup Used in Tests:
 
