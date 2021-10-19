@@ -2,7 +2,7 @@
 """
 Created on Fri Oct  2 09:41:18 2020
 
-@author: User
+@author: Mert Ertugrul
 """
 
 import psycopg2
