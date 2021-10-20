@@ -7,7 +7,9 @@ _Application developed in 2020 during internship at Karel Electronics_
  
 This repository contains a python based desktop application that aims to streamline stock-taking and transactions at facilities processing large quantities of drug boxes or other small sized boxes identifiable with data matrices.  
 
-The application requires live camera footage from a USB 3.0 camera. Drug boxes are placed on a platform with a preferably dark surface as detection is significantly more robust with black or dark background textures. The camera is placed approximately one meter above the platform, although camera properties are adjustable to work better with other distances from the platform. Using the camera footage, the desktop application detects multiple drug boxes placed on the platform at a time and decodes their data matrices. 
+The application requires live camera footage from a USB 3.0 camera. Drug boxes are placed on a platform with a preferably dark surface as detection is significantly more robust with black or dark background textures. The camera is placed approximately one meter above the platform, although camera properties are adjustable to work better with other distances from the platform. Using the camera footage, the desktop application detects multiple drug boxes placed on the platform at a time and decodes their data matrices.
+
+Brief demo video (recorded before database functionality was added): https://youtu.be/kgrd9gb3gYI
 
 
 ### Setup Used in Tests:
